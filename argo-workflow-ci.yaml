@@ -1,4 +1,3 @@
-# Create a fixed workflow that addresses both issues
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -25,7 +24,7 @@ spec:
           # Clone to current directory (not subdirectory)
           echo "📦 Cloning repository..."
           apk add --no-cache git
-          git clone https://github.com/vasplustechnologies/patient-appointment-api.git /workspace
+          git clone https://github.com/vasplustechnologies/patient-appointment-api-v2.git /workspace
           
           echo "📁 Checking files..."
           ls -la
@@ -41,26 +40,11 @@ spec:
   - name: kaniko-build
     container:
       image: gcr.io/kaniko-project/executor:latest
-      workingDir: /workspace
-      command: [sh, -c]
       args:
-        - |
-          echo "🐳 Cloning repository for build..."
-          apk add --no-cache git
-          git clone https://github.com/vasplustechnologies/patient-appointment-api.git /workspace
-          
-          echo "📁 Files in workspace:"
-          ls -la
-          
-          echo "🔨 Building and pushing with Kaniko..."
-          /kaniko/executor \
-            --context=dir:///workspace \
-            --destination=mofwili/patient-appointment-api:latest \
-            --cache=true \
-            --verbosity=info
-          
-          echo "🎉 SUCCESS! Image built and pushed to DockerHub!"
-          echo "📦 Image: mofwili/patient-appointment-api:latest"
+      - --context=git://github.com/vasplustechnologies/patient-appointment-api-v2.git
+      - --destination=mofwili/patient-appointment-api:latest
+      - --cache=true
+      - --verbosity=info
       env:
       - name: DOCKER_CONFIG
         value: /kaniko/.docker
