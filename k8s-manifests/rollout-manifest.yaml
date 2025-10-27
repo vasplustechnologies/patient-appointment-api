@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: patient-api-rollout
+  name: patient-api-rollout-testing
   namespace: default
 spec:
   replicas: 4
