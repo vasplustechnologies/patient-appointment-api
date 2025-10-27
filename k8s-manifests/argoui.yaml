@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: patient-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vasplustechnologies/patient-appointment-api.git
+    targetRevision: HEAD
+    path: k8s-manifests  # Point to the k8s-manifests folder
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
