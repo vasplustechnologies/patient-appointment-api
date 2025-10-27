@@ -8,7 +8,6 @@ metadata:
     argocd-image-updater.argoproj.io/patient-api.update-strategy: latest
     argocd-image-updater.argoproj.io/patient-api.allow-tags: regexp:^build-.*$
     argocd-image-updater.argoproj.io/patient-api.pull-secret: pullsecret:default/dockerhub-secret
-    argocd-image-updater.argoproj.io/write-back-method: git
 spec:
   replicas: 4
   strategy:
@@ -30,7 +29,7 @@ spec:
     spec:
       containers:
       - name: patient-api
-        image: mofwili/patient-appointment-api  # No tag here!
+        image: mofwili/patient-appointment-api:build-4
         ports:
         - containerPort: 3000
         env:

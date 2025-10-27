@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-image-updater-config
+  namespace: argocd
+data:
+  update.strategy: latest
+  writeback.method: git
+  git.user: ArgoCD Image Updater
+  git.email: vasplustechnologies@gmail.com
