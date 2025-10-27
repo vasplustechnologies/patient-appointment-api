@@ -24,3 +24,4 @@ subjects:
 - kind: ServiceAccount
   name: workflow-executor
   namespace: default
+  
