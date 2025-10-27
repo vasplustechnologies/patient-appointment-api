@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: fixed-ci-
+spec:
+  entrypoint: main
+  templates:
+  - name: main
+    steps:
+    - - name: clone-and-test
+        template: clone-test-build
+    - - name: build-and-push
+        template: kaniko-build  # Using Kaniko instead of Docker for Kubernetes-native builds
+
+  - name: clone-test-build
+    container:
+      image: node:18-alpine
+      workingDir: /workspace
+      command: [sh, -c]
+      args:
+        - |
+          echo "🚀 STARTING CI PIPELINE..."
+          
+          # Clone to current directory (not subdirectory)
+          echo "📦 Cloning repository..."
+          apk add --no-cache git
+          git clone https://github.com/vasplustechnologies/patient-appointment-api-v2.git /workspace
+          
+          echo "📁 Checking files..."
+          ls -la
+          
+          echo "🧪 Installing dependencies..."
+          npm install
+          
+          echo "🔬 Running tests..."
+          npm test
+          
+          echo "✅ Tests completed successfully!"
+
+  - name: kaniko-build
+    container:
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+      - --context=git://github.com/vasplustechnologies/patient-appointment-api-v2.git
+      - --destination=mofwili/patient-appointment-api:latest
+      - --cache=true
+      - --verbosity=info
+      env:
+      - name: DOCKER_CONFIG
+        value: /kaniko/.docker
+      volumeMounts:
+      - name: kaniko-secret
+        mountPath: /kaniko/.docker
+    volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: dockerhub-credentials
+        items:
+        - key: .dockerconfigjson
+          path: config.json

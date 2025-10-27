@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-event-source
+  namespace: argo-events
+spec:
+  github:
+    patient-api:
+      owner: vasplustechnologies
+      repository: patient-appointment-api-v2
+      events:
+        - push
+      webhook:
+        endpoint: /push
+        port: "12000"
+        method: POST
+      apiToken:
+        name: github-access
+        key: token
+      contentType: json

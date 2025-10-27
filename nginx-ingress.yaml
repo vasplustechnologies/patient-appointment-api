@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: github-event-ingress
+  namespace: argo-events
+spec:
+  rules:
+    - host: github-events.luvatoltd.com
+      http:
+        paths:
+          - path: /push-event
+            pathType: Prefix
+            backend:
+              service:
+                name: github-event-source-svc
+                port:
+                  number: 12000

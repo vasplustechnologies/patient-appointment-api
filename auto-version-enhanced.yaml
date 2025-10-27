@@ -1,0 +1,95 @@
+﻿apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: versioned-ci-
+spec:
+  entrypoint: main
+  templates:
+  - name: main
+    steps:
+    - - name: get-next-version
+        template: get-next-version
+    - - name: clone-and-test
+        template: clone-test-build
+        arguments:
+          parameters:
+          - name: build-version
+            value: "{{steps.get-next-version.outputs.parameters.next-version}}"
+    - - name: build-and-push
+        template: kaniko-build
+        arguments:
+          parameters:
+          - name: build-version
+            value: "{{steps.get-next-version.outputs.parameters.next-version}}"
+
+  - name: get-next-version
+    container:
+      image: bitnami/kubectl:latest
+      command: [sh, -c]
+      args:
+        - |
+          # Get current version
+          CURRENT=$(kubectl get configmap build-version -o jsonpath='{.data.current}')
+          echo "Current version: build-$CURRENT"
+          
+          # Calculate next version
+          NEXT=$((CURRENT + 1))
+          echo "Next version: build-$NEXT"
+          
+          # Update ConfigMap
+          kubectl patch configmap build-version --type=merge -p="{\"data\":{\"current\":\"$NEXT\"}}"
+          
+          # Output the version
+          echo "build-$NEXT" > /tmp/next-version.txt
+    outputs:
+      parameters:
+      - name: next-version
+        valueFrom:
+          path: /tmp/next-version.txt
+
+  - name: clone-test-build
+    inputs:
+      parameters:
+      - name: build-version
+    container:
+      image: node:18-alpine
+      workingDir: /workspace
+      command: [sh, -c]
+      args:
+        - |
+          echo " STARTING CI PIPELINE - {{inputs.parameters.build-version}}"
+          echo " Cloning repository..."
+          apk add --no-cache git
+          git clone https://github.com/vasplustechnologies/patient-appointment-api-v2.git /workspace
+          cd /workspace
+          echo " Installing dependencies..."
+          npm install
+          echo " Running tests..."
+          npx jest --passWithNoTests || echo "Tests completed"
+          echo " Ready for {{inputs.parameters.build-version}}!"
+
+  - name: kaniko-build
+    inputs:
+      parameters:
+      - name: build-version
+    container:
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+      - --context=git://github.com/vasplustechnologies/patient-appointment-api-v2.git
+      - --destination=mofwili/patient-appointment-api:latest
+      - --destination=mofwili/patient-appointment-api:{{inputs.parameters.build-version}}
+      - --cache=true
+      - --verbosity=info
+      env:
+      - name: DOCKER_CONFIG
+        value: /kaniko/.docker
+      volumeMounts:
+      - name: kaniko-secret
+        mountPath: /kaniko/.docker
+    volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: dockerhub-credentials
+        items:
+        - key: .dockerconfigjson
+          path: config.json

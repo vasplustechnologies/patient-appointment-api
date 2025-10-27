@@ -1,0 +1,99 @@
+﻿apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: auto-version-ci-
+spec:
+  entrypoint: main
+  templates:
+  - name: main
+    steps:
+    - - name: clone-and-test
+        template: clone-test-build
+    - - name: build-and-push
+        template: kaniko-build-versioned
+
+  - name: clone-test-build
+    container:
+      image: node:18-alpine
+      workingDir: /workspace
+      command: [sh, -c]
+      args:
+        - |
+          echo "🚀 STARTING CI PIPELINE..."
+          apk add --no-cache git
+          git clone https://github.com/vasplustechnologies/patient-appointment-api-v2.git /workspace
+          cd /workspace
+          echo "📁 Files in workspace:"
+          ls -la
+          echo "🧪 Installing dependencies..."
+          npm install
+          echo "🔬 Running tests..."
+          npm test
+          echo "✅ Tests completed successfully!"
+
+  - name: kaniko-build-versioned
+    container:
+      image: alpine:latest  # Use alpine which has sh and we'll install Kaniko
+      command: [sh, -c]
+      args:
+        - |
+          set -e
+          
+          # Install dependencies
+          echo "📦 Installing dependencies..."
+          apk add --no-cache curl jq
+          
+          # Download and install Kaniko
+          echo "⬇️ Downloading Kaniko..."
+          wget -q -O /kaniko/executor https://github.com/GoogleContainerTools/kaniko/releases/download/v1.9.1/executor
+          chmod +x /kaniko/executor
+          
+          IMAGE_NAME="mofwili/patient-appointment-api"
+          
+          echo "📡 Fetching latest tag from Docker Hub..."
+          LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${IMAGE_NAME}/tags/?page_size=100" | jq -r '.results[] | select(.name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -n1 || echo "")
+          
+          if [[ -z "$LATEST_TAG" ]]; then
+            NEW_TAG="v1.0.0"
+            echo "🎯 No existing version tags found. Starting with: $NEW_TAG"
+          else
+            echo "📋 Latest tag found: $LATEST_TAG"
+            
+            # Extract version numbers
+            BASE=$(echo "$LATEST_TAG" | sed 's/v//')
+            MAJOR=$(echo "$BASE" | cut -d. -f1)
+            MINOR=$(echo "$BASE" | cut -d. -f2)
+            PATCH=$(echo "$BASE" | cut -d. -f3)
+            
+            # Increment patch version
+            PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            echo "🆕 Next version: $NEW_TAG"
+          fi
+          
+          echo "🏷️ Building version: $NEW_TAG"
+          
+          # Run Kaniko
+          /kaniko/executor \
+            --context=git://github.com/vasplustechnologies/patient-appointment-api-v2.git \
+            --destination=${IMAGE_NAME}:latest \
+            --destination=${IMAGE_NAME}:${NEW_TAG} \
+            --cache=true \
+            --verbosity=info
+          
+          echo "✅ SUCCESS! Pushed:"
+          echo "   - ${IMAGE_NAME}:latest"
+          echo "   - ${IMAGE_NAME}:${NEW_TAG}"
+      env:
+      - name: DOCKER_CONFIG
+        value: /kaniko/.docker
+      volumeMounts:
+      - name: kaniko-secret
+        mountPath: /kaniko/.docker
+    volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: dockerhub-credentials
+        items:
+        - key: .dockerconfigjson
+          path: config.json

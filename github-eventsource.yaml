@@ -1,0 +1,21 @@
+﻿apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-webhook
+  namespace: argo-events
+spec:
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  github:
+    patient-api-repo:
+      port: "12000"
+      endpoint: /webhook
+      events:
+        - push
+      webhook:
+        url: "http://localhost:12000"
+      secret:
+        name: github-webhook-secret
+        key: secret
