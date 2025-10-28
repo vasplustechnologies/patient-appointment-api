@@ -1,0 +1,22 @@
+# kibana.yaml
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+  namespace: monitoring
+spec:
+  version: 8.13.0
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 100m
+          limits:
+            memory: 1Gi
+            cpu: 500m

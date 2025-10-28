@@ -1,0 +1,32 @@
+# exact-match-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: argo-rollouts-metrics
+  namespace: argo-rollouts  # Service should be in same namespace as pod
+  labels:
+    app.kubernetes.io/name: argo-rollouts-metrics
+spec:
+  ports:
+  - name: metrics
+    port: 8090
+    targetPort: 8090
+  selector:
+    app.kubernetes.io/name: argo-rollouts  # Exact pod label
+    pod-template-hash: 65c8945cc7          # Include the hash to be specific
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argo-rollouts-metrics
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts-metrics
+  namespaceSelector:
+    matchNames:
+    - argo-rollouts  # Correct namespace where service and pod are
+  endpoints:
+  - port: metrics
+    interval: 30s
