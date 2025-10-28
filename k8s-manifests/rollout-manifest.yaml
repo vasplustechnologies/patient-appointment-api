@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: patient-api-rollout-testing
+  name: patient-api-rollout
   namespace: default
   annotations:
     argocd-image-updater.argoproj.io/image-list: patient-api=mofwili/patient-appointment-api
@@ -10,7 +10,7 @@ metadata:
     argocd-image-updater.argoproj.io/patient-api.pull-secret: pullsecret:default/dockerhub-secret
     argocd-image-updater.argoproj.io/write-back-method: git
 spec:
-  replicas: 4
+  replicas: 8
   strategy:
     canary:
       steps:
